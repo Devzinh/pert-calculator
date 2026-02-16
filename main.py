@@ -40,6 +40,33 @@ class AtividadePERT:
         return "Alto"
 
 
+def imprimir_linha(largura: int = 90) -> None:
+    print("─" * largura)
+
+
+def imprimir_titulo(titulo: str, subtitulo: str | None = None) -> None:
+    largura = 90
+    print("\n" + "═" * largura)
+    print(titulo.center(largura))
+    if subtitulo:
+        print(subtitulo.center(largura))
+    print("═" * largura)
+
+
+def exibir_boas_vindas() -> None:
+    imprimir_titulo(
+        "CALCULADORA PERT PARA ENGENHARIA",
+        "Planejamento didático, objetivo e orientado à decisão",
+    )
+    print("Como preencher cada atividade:")
+    print("  1) Otimista (O): melhor cenário realista.")
+    print("  2) Mais provável (M): cenário esperado na rotina.")
+    print("  3) Pessimista (P): pior cenário plausível.")
+    print("\nFórmula PERT: (O + 4M + P) / 6")
+    print("Regra obrigatória: O ≤ M ≤ P")
+    print("Dica: use a mesma unidade para todo o projeto (dias, horas, semanas etc.).")
+
+
 def ler_float_positivo(prompt: str) -> float:
     while True:
         entrada = input(prompt).strip().replace(",", ".")
@@ -61,6 +88,28 @@ def ler_nome_atividade() -> str:
         return ""
 
 
+def ler_unidade_tempo() -> str:
+    print("\nUnidade de tempo do projeto")
+    imprimir_linha()
+    print("1) Dias")
+    print("2) Horas")
+    print("3) Semanas")
+    print("4) Personalizada")
+
+    while True:
+        escolha = input("Escolha [1-4]: ").strip()
+        opcoes = {"1": "dias", "2": "horas", "3": "semanas"}
+        if escolha in opcoes:
+            return opcoes[escolha]
+        if escolha == "4":
+            unidade = input("Digite a unidade desejada: ").strip().lower()
+            if unidade:
+                return unidade
+            print("Erro: informe um nome de unidade válido.")
+            continue
+        print("Erro: escolha uma opção entre 1 e 4.")
+
+
 def validar_ordem(o: float, m: float, p: float) -> None:
     if not (o <= m <= p):
         raise ValueError("Ordem inválida: use Otimista ≤ Mais Provável ≤ Pessimista.")
@@ -77,9 +126,10 @@ def calcular_intervalo_confianca(
     return media - margem, media + margem
 
 
-def coletar_atividades() -> List[AtividadePERT]:
-    print("\n=== Planejamento PERT para Engenharia e Gestão de Projetos ===")
-    print("Cadastre uma ou mais atividades. Pressione ENTER no nome para encerrar.\n")
+def coletar_atividades(unidade_tempo: str) -> List[AtividadePERT]:
+    print("\nCadastro de atividades")
+    imprimir_linha()
+    print("Pressione ENTER no nome quando terminar o cadastro.\n")
 
     atividades: List[AtividadePERT] = []
 
@@ -93,12 +143,16 @@ def coletar_atividades() -> List[AtividadePERT]:
 
         while True:
             try:
-                o = ler_float_positivo("  Otimista (O): ")
-                m = ler_float_positivo("  Mais provável (M): ")
-                p = ler_float_positivo("  Pessimista (P): ")
+                o = ler_float_positivo(f"  Otimista (O) em {unidade_tempo}: ")
+                m = ler_float_positivo(f"  Mais provável (M) em {unidade_tempo}: ")
+                p = ler_float_positivo(f"  Pessimista (P) em {unidade_tempo}: ")
                 validar_ordem(o, m, p)
-                atividades.append(AtividadePERT(nome, o, m, p))
-                print("  ✓ Atividade adicionada com sucesso.\n")
+                atividade = AtividadePERT(nome, o, m, p)
+                atividades.append(atividade)
+                print(
+                    f"  ✓ Atividade adicionada | PERT: {atividade.estimativa:.2f} {unidade_tempo} | "
+                    f"Risco: {atividade.classificacao_risco}\n"
+                )
                 break
             except ValueError as erro:
                 print(f"  Erro: {erro} Tente novamente.\n")
@@ -106,39 +160,35 @@ def coletar_atividades() -> List[AtividadePERT]:
     return atividades
 
 
-def imprimir_relatorio_atividades(atividades: List[AtividadePERT]) -> None:
-    print("\n" + "=" * 95)
-    print("RELATÓRIO DE ATIVIDADES")
-    print("=" * 95)
+def imprimir_relatorio_atividades(atividades: List[AtividadePERT], unidade_tempo: str) -> None:
+    imprimir_titulo("RELATÓRIO DE ATIVIDADES")
     cabecalho = (
-        f"{'Atividade':<26} {'PERT':>10} {'Desvio':>10} {'Variância':>11} "
+        f"{'Atividade':<24} {'PERT':>11} {'Desvio':>11} {'Variância':>11} "
         f"{'Incerteza':>11} {'Risco':>10}"
     )
     print(cabecalho)
-    print("-" * 95)
+    imprimir_linha()
 
     for atividade in atividades:
         print(
-            f"{atividade.nome:<26.26} "
-            f"{atividade.estimativa:>10.2f} "
-            f"{atividade.desvio_padrao:>10.2f} "
+            f"{atividade.nome:<24.24} "
+            f"{atividade.estimativa:>8.2f} {unidade_tempo[:2]:>2} "
+            f"{atividade.desvio_padrao:>8.2f} {unidade_tempo[:2]:>2} "
             f"{atividade.variancia:>11.2f} "
             f"{atividade.indice_incerteza:>10.1%} "
             f"{atividade.classificacao_risco:>10}"
         )
 
 
-def imprimir_resumo_projeto(atividades: List[AtividadePERT]) -> None:
+def imprimir_resumo_projeto(atividades: List[AtividadePERT], unidade_tempo: str) -> None:
     media_total = sum(atividade.estimativa for atividade in atividades)
     variancia_total = sum(atividade.variancia for atividade in atividades)
     desvio_total = variancia_total**0.5
 
-    print("\n" + "=" * 95)
-    print("RESUMO CONSOLIDADO DO PROJETO")
-    print("=" * 95)
+    imprimir_titulo("RESUMO CONSOLIDADO DO PROJETO")
     print(f"Atividades analisadas: {len(atividades)}")
-    print(f"Estimativa total PERT: {media_total:.2f} dias")
-    print(f"Desvio padrão total: ±{desvio_total:.2f} dias")
+    print(f"Estimativa total PERT: {media_total:.2f} {unidade_tempo}")
+    print(f"Desvio padrão total: ±{desvio_total:.2f} {unidade_tempo}")
 
     niveis: Dict[float, str] = {
         0.68: "68%",
@@ -149,18 +199,28 @@ def imprimir_resumo_projeto(atividades: List[AtividadePERT]) -> None:
     print("\nFaixas de prazo por nível de confiança:")
     for confianca, rotulo in niveis.items():
         inicio, fim = calcular_intervalo_confianca(media_total, desvio_total, confianca)
-        print(f"• {rotulo:>3}: {inicio:.2f} a {fim:.2f} dias")
+        print(f"• {rotulo:>3}: {inicio:.2f} a {fim:.2f} {unidade_tempo}")
 
-    print("\nLeitura gerencial:")
-    print("• Use a faixa de 90% para compromissos com cliente e governança.")
-    print("• Use 95% em contextos com alta criticidade de prazo (obras, comissionamento, startup).")
-    print("• Atividades com risco ALTO merecem plano de resposta e buffer dedicado.")
+    print("\nLeitura gerencial sugerida:")
+    print("• 68%: bom para simulações rápidas e alinhamentos internos.")
+    print("• 90%: recomendável para compromissos com cliente e governança.")
+    print("• 95%: usar em cenários críticos de segurança, obra ou comissionamento.")
+    print("• Atividades com risco ALTO pedem plano de mitigação e contingência dedicada.")
+
+
+def imprimir_encerramento() -> None:
+    imprimir_linha()
+    print("Fim da análise. Use este relatório para orientar prazo, risco e contingência.")
+    imprimir_linha()
 
 
 def main() -> None:
-    atividades = coletar_atividades()
-    imprimir_relatorio_atividades(atividades)
-    imprimir_resumo_projeto(atividades)
+    exibir_boas_vindas()
+    unidade_tempo = ler_unidade_tempo()
+    atividades = coletar_atividades(unidade_tempo)
+    imprimir_relatorio_atividades(atividades, unidade_tempo)
+    imprimir_resumo_projeto(atividades, unidade_tempo)
+    imprimir_encerramento()
 
 
 if __name__ == "__main__":
